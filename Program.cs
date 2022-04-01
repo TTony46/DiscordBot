@@ -30,7 +30,7 @@ namespace DiscordBot
             // Discord Client
             var discord = new DiscordClient(new DiscordConfiguration()
             {
-                Token = "OTU3NDk5NDY3OTA3NjAwMzk0.Yj_q3g.KBfOt1TKL6s8B5YLGHXU5k2IZBA",
+                Token = "TOKEN",
                 TokenType = TokenType.Bot,
                 Intents = DiscordIntents.AllUnprivileged
             });
