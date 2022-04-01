@@ -1,11 +1,15 @@
-﻿using DSharpPlus.CommandsNext;
+﻿using DSharpPlus;
+using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext.Converters;
 using DSharpPlus.CommandsNext.Entities;
 using DSharpPlus.Entities;
 using DSharpPlus.Interactivity.Extensions;
+using DSharpPlus.VoiceNext;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,6 +18,7 @@ namespace PomodoroBot.Commands
 {
     public class Module : BaseCommandModule
     {
+        
         // Description examples do not include prefixes, it is added when outputting the 'help' command.
 
         [Command("greet")]
@@ -93,46 +98,6 @@ namespace PomodoroBot.Commands
             var results = result.Select(x => $"{x.Emoji}: {x.Total}");
 
             await context.Channel.SendMessageAsync(string.Join("\n", results)).ConfigureAwait(false);       
-        }
-
-        [Command("timerset")]
-        [Description("UPDATEME: DESCRIPTION FOR TIMER.\n" +
-            "Example: timerset 1h15m30s")]
-        public async Task PomoTimer(CommandContext context, TimeSpan duration)
-        {
-            var interactivity = context.Client.GetInteractivity();
-            var checkmarkEmoji = DiscordEmoji.FromName(context.Client, ":white_check_mark:");          
-
-            var displayEmbed = new DiscordEmbedBuilder()
-            {
-                Title = "Pomodoro Bot Timer",
-                Description = $"Timer set for **{duration}**\nReact to confirm.",
-                Color = new DiscordColor(238, 64, 54)
-            };
-
-            var message = await context.Channel.SendMessageAsync(embed: displayEmbed).ConfigureAwait(false);
-
-            await message.CreateReactionAsync(checkmarkEmoji);
-
-            var reactionResult = await interactivity.WaitForReactionAsync(x =>
-                x.Message == message
-                && x.User == context.User
-                && x.Emoji == checkmarkEmoji,
-                TimeSpan.FromSeconds(15)).ConfigureAwait(false);
-
-            if (reactionResult.TimedOut)
-            {
-                await context.Channel.SendMessageAsync("Timed out. Timer has been cancelled.").ConfigureAwait(false);
-                //await message.DeleteAsync();
-            }
-            else if (reactionResult.Result.Emoji == checkmarkEmoji)
-            {
-                await context.Channel.SendMessageAsync($"Timer confirmed for **{duration}**.").ConfigureAwait(false); 
-            }                 
-            else
-            {
-                await context.Channel.SendMessageAsync("Timer has been cancelled.").ConfigureAwait(false);
-            }
         }
     }
 
