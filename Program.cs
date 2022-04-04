@@ -86,7 +86,5 @@ namespace DiscordBot
 
 
         // https://dsharpplus.github.io/articles/commands/intro.html
-        // TESTING
-
     }
 }
