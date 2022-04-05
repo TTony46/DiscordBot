@@ -19,13 +19,105 @@ namespace PomodoroBot.Commands
     public class AlarmData
     {
         public DateTime AlarmTime;
+        public static TimeSpan AlarmDuration = TimeSpan.FromMinutes(1);
+        public static TimeSpan AlarmShortBreak = TimeSpan.FromMinutes(1);
+        public static TimeSpan AlarmLongBreak = TimeSpan.FromMinutes(1);
     }
     public class TimerCommands : BaseCommandModule
     {
-        [Command("timerset")]
+        [Command("settings")]
         [Description("UPDATEME DESCRIPTION FOR TIMER.\n" +
-            "Example: timerset 1h15m30s")]
-        public async Task PomoTimer(CommandContext context, TimeSpan duration)
+            "Example: settings")]
+        public async Task ChangeSettings(CommandContext context)
+        {
+            var interactivity = context.Client.GetInteractivity();
+            var redSquareEmoji = DiscordEmoji.FromName(context.Client, ":red_square:");
+            var blueSquareEmoji = DiscordEmoji.FromName(context.Client, ":blue_square:");
+            var greenSquareEmoji = DiscordEmoji.FromName(context.Client, ":green_square:");
+
+            var displayEmbed = new DiscordEmbedBuilder()
+            {
+                Title = "Current Settings",
+                Description =
+                    $"{redSquareEmoji} Work Interval: **{AlarmData.AlarmDuration}**\n\n" +
+                    $"{blueSquareEmoji} Short Break: **{AlarmData.AlarmShortBreak}**\n\n" +
+                    $"{greenSquareEmoji} Long Break: **{AlarmData.AlarmLongBreak}**\n\n" +
+                    "React to the corresponding emoji to change the setting",
+                Color = new DiscordColor(238, 64, 54)
+            };
+
+            var message = await context.Channel.SendMessageAsync(embed: displayEmbed).ConfigureAwait(false);
+            await message.CreateReactionAsync(redSquareEmoji);
+            await message.CreateReactionAsync(blueSquareEmoji);
+            await message.CreateReactionAsync(greenSquareEmoji);
+
+            var reactionResult = await interactivity.WaitForReactionAsync(x =>
+                x.Message == message
+                && x.User == context.User
+                && x.Emoji == redSquareEmoji
+                || x.Emoji == blueSquareEmoji
+                || x.Emoji == greenSquareEmoji,
+                TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+
+            if (reactionResult.TimedOut)
+            {
+                await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                return;
+            }
+
+            bool isValid = false;
+            isValid = (reactionResult.Result.Emoji != null &&
+                           (reactionResult.Result.Emoji == redSquareEmoji
+                            || reactionResult.Result.Emoji == blueSquareEmoji
+                            || reactionResult.Result.Emoji == greenSquareEmoji));
+
+            TimeSpan newUserTime = TimeSpan.FromMinutes(0);
+
+            // TODO:
+            // There is a bug where after sending the embed, and not clicking any reactions,
+            // it prompts to set the minutes of one of the settings, mainly Work Interval
+
+
+
+            if (isValid)
+            {
+                await context.Channel.SendMessageAsync(
+                    "How many minutes did you want to set that interval as? i.e : 45").ConfigureAwait(false); ;
+                var response = await interactivity.WaitForMessageAsync(x =>
+                    x.Channel == context.Channel).ConfigureAwait(false);
+
+                int result = Convert.ToInt32(response.Result.Content);
+                newUserTime = TimeSpan.FromMinutes(result);
+            }       
+            
+            // If the user reacts to the message
+            if (reactionResult.Result.Emoji == redSquareEmoji)
+            {
+                AlarmData.AlarmDuration = newUserTime;
+                await context.Channel.SendMessageAsync($"Work Interval is now: " +
+                    $"**{AlarmData.AlarmDuration}**.").ConfigureAwait(false);
+            }
+            else if (reactionResult.Result.Emoji == blueSquareEmoji)
+            {
+                AlarmData.AlarmShortBreak = newUserTime;
+                await context.Channel.SendMessageAsync($"Short Break is now: " +
+                    $"**{AlarmData.AlarmShortBreak}**.").ConfigureAwait(false);
+            }
+            else if (reactionResult.Result.Emoji == greenSquareEmoji)
+            {
+                AlarmData.AlarmLongBreak = newUserTime;
+                await context.Channel.SendMessageAsync($"Work Interval is now: " +
+                    $"**{AlarmData.AlarmLongBreak}**.").ConfigureAwait(false);
+            }
+            else
+                await context.Channel.SendMessageAsync("Timer has been cancelled.").ConfigureAwait(false);
+        }
+
+        [Command("pomodoro")]
+        [Description("UPDATEME DESCRIPTION FOR TIMER.\n" +
+            "Example: pomodoro")]
+        
+        public async Task Pomodoro(CommandContext context)
         {
             // Connects to the command user's current voice channel.
             // If they are not in one, notify them with a message in chat.
@@ -35,18 +127,24 @@ namespace PomodoroBot.Commands
                 await context.Channel.SendMessageAsync("You are not connected to a voice channel.");
                 return;
             }
+
             var interactivity = context.Client.GetInteractivity();
             var checkmarkEmoji = DiscordEmoji.FromName(context.Client, ":white_check_mark:");
+            var duration = AlarmData.AlarmDuration;
 
             // Creates the embed to send the message in
             var displayEmbed = new DiscordEmbedBuilder()
             {
                 Title = "Pomodoro Bot Timer",
-                Description = $"Timer set for **{duration}**\nReact to confirm.",
+                Description = 
+                    $"Timer set with settings:\n" +
+                    $"Work Interval: **{AlarmData.AlarmDuration}**\n" +
+                    $"Short Break: **{AlarmData.AlarmShortBreak}**\n" +
+                    $"Long Break: **{AlarmData.AlarmLongBreak}**\n" +
+                    $"\nReact to confirm.",
                 Color = new DiscordColor(238, 64, 54)
             };
 
-            // Sends the embed and waits for a reaction to the checkmark from the user who send the command
             var message = await context.Channel.SendMessageAsync(embed: displayEmbed).ConfigureAwait(false);
             await message.CreateReactionAsync(checkmarkEmoji);
 
@@ -61,42 +159,66 @@ namespace PomodoroBot.Commands
 
             // If the user reacts to the message
             else if (reactionResult.Result.Emoji == checkmarkEmoji)
-            {                               
-                await Join(context, vstate.Channel);
-                                   
-                DateTime curTime = DateTime.Now;
-
-                // This variable is curTime, but only up to the closest second.
-                DateTime newCurTime = new DateTime(
-                    curTime.Year, curTime.Month, curTime.Day, curTime.Hour, curTime.Minute, curTime.Second);
-
-                // The target time of when the timer will stop.
-                DateTime waitingUntil = newCurTime.Add(duration);
-
-                await context.Channel.SendMessageAsync($"Timer confirmed for **{duration}**.").ConfigureAwait(false);
-
-                // Continuously compares the current time with the target time until closest second
-                // and stops when the time has been reached.
-                while ((DateTime.Compare(new DateTime(
-                    DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day,
-                    DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second), waitingUntil)) < 0)
+            {
+                await context.Channel.SendMessageAsync("Pomodoro Timer confirmed.").ConfigureAwait(false);
+                while (true)
                 {
-                    await Task.Delay(750);
-                }
+                    // Four Pomodoros before a large break
+                    for (int i = 1; i <= 4; i++)
+                    {
+                        await context.Channel.SendMessageAsync(
+                            $"Pomodoro **{i}** has started.").ConfigureAwait(false);
 
-                // Announces in the chat when target time has been reached and leaves.
-                if ((DateTime.Compare(new DateTime(
-                    DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day,
-                    DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second), waitingUntil)) == 0)
-                {
-                    // TODO: Play a sound when the timer has been reached.
-                    await context.Channel.SendMessageAsync($"@everyone Time has been reached!");
-                    await Task.Delay(5000);
-                    await Leave(context);
+                        await Timer(context, duration, vstate.Channel);
+
+                        await context.Channel.SendMessageAsync(
+                            $"Take a **{AlarmData.AlarmShortBreak.ToString(@"hh\:mm")}** break.").ConfigureAwait(false);
+                        await Timer(context, AlarmData.AlarmShortBreak, vstate.Channel);
+                    }
                 }
             }
             else
                 await context.Channel.SendMessageAsync("Timer has been cancelled.").ConfigureAwait(false);
+
+
+
+
+        }
+
+
+        [Command("timerset")]
+        [Description("UPDATEME DESCRIPTION FOR TIMER.\n" +
+            "Example: timerset 1h15m30s")]
+        public async Task Timer(CommandContext context, TimeSpan duration, DiscordChannel channel)
+        {                              
+            await Join(context, channel);
+                                   
+            DateTime curTime = DateTime.Now;
+
+            // This variable is curTime, but only up to the closest second.
+            DateTime newCurTime = new DateTime(
+                curTime.Year, curTime.Month, curTime.Day, curTime.Hour, curTime.Minute, curTime.Second);
+
+            // The target time of when the timer will stop.
+            DateTime waitingUntil = newCurTime.Add(duration);
+
+            // Continuously compares the current time with the target time until closest second
+            // and stops when the time has been reached.
+            while ((DateTime.Compare(new DateTime(
+                DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day,
+                DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second), waitingUntil)) < 0)
+            {
+                await Task.Delay(750);
+            }
+
+            // Announces in the chat when target time has been reached and leaves.
+            if ((DateTime.Compare(new DateTime(
+                DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day,
+                DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second), waitingUntil)) == 0)
+            {
+                // TODO: Play a sound when the timer has been reached.
+                await context.Channel.SendMessageAsync($"@everyone Time has been reached!");
+            }  
         }
 
         [Command("join")]
@@ -118,7 +240,6 @@ namespace PomodoroBot.Commands
             if (vnc != null)
             {
                 // already connected
-                await ctx.Channel.SendMessageAsync("Already connected to this channel.");
                 return;
             }
 
@@ -167,6 +288,8 @@ namespace PomodoroBot.Commands
             vnc.Disconnect();
             //await ctx.Channel.SendMessageAsync("Disconnected");
         }
+
+        
     }
 
 }
