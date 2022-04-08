@@ -48,44 +48,50 @@ namespace PomodoroBot.Commands
 
             var message = await context.Channel.SendMessageAsync(embed: displayEmbed).ConfigureAwait(false);
             await message.CreateReactionAsync(redSquareEmoji);
+            await Task.Delay(250);
             await message.CreateReactionAsync(blueSquareEmoji);
+            await Task.Delay(250);
             await message.CreateReactionAsync(greenSquareEmoji);
+
+            TimeSpan secondsUntilTimedOut = TimeSpan.FromSeconds(10);
 
             var reactionResult = await interactivity.WaitForReactionAsync(x =>
                 x.Message == message
                 && x.User == context.User
-                && x.Emoji == redSquareEmoji
+                && (x.Emoji == redSquareEmoji
                 || x.Emoji == blueSquareEmoji
-                || x.Emoji == greenSquareEmoji,
-                TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+                || x.Emoji == greenSquareEmoji),
+                secondsUntilTimedOut).ConfigureAwait(false);
 
             if (reactionResult.TimedOut)
             {
                 await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                TimeSpan timeToResetReaction = TimeSpan.FromSeconds(1);
+                secondsUntilTimedOut = timeToResetReaction;
                 return;
             }
 
             bool isValid = false;
-            isValid = (reactionResult.Result.Emoji != null &&
-                           (reactionResult.Result.Emoji == redSquareEmoji
-                            || reactionResult.Result.Emoji == blueSquareEmoji
-                            || reactionResult.Result.Emoji == greenSquareEmoji));
+            if (reactionResult.Result.Emoji == null) return;
+
+            isValid = (reactionResult.Result.Emoji == redSquareEmoji
+                        || reactionResult.Result.Emoji == blueSquareEmoji
+                        || reactionResult.Result.Emoji == greenSquareEmoji);
+
+            string intervalType = "";
+            if (reactionResult.Result.Emoji == redSquareEmoji) intervalType = "Work Interval";
+            else if (reactionResult.Result.Emoji == blueSquareEmoji) intervalType = "Short Break";
+            else if (reactionResult.Result.Emoji == greenSquareEmoji) intervalType = "Long Break";
 
             TimeSpan newUserTime = TimeSpan.FromMinutes(0);
-
-            // TODO:
-            // There is a bug where after sending the embed, and not clicking any reactions,
-            // it prompts to set the minutes of one of the settings, mainly Work Interval
-
-
 
             if (isValid)
             {
                 await context.Channel.SendMessageAsync(
-                    "How many minutes did you want to set that interval as? i.e : 45").ConfigureAwait(false); ;
+                    $"How many minutes did you want to set the {intervalType} as? i.e : 45").ConfigureAwait(false); ;
                 var response = await interactivity.WaitForMessageAsync(x =>
                     x.Channel == context.Channel).ConfigureAwait(false);
-
+               
                 int result = Convert.ToInt32(response.Result.Content);
                 newUserTime = TimeSpan.FromMinutes(result);
             }       
@@ -94,20 +100,29 @@ namespace PomodoroBot.Commands
             if (reactionResult.Result.Emoji == redSquareEmoji)
             {
                 AlarmData.AlarmDuration = newUserTime;
-                await context.Channel.SendMessageAsync($"Work Interval is now: " +
+                await context.Channel.SendMessageAsync($"{intervalType} is now: " +
                     $"**{AlarmData.AlarmDuration}**.").ConfigureAwait(false);
+
+                TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
+                secondsUntilTimedOut = timeToResetReaction;
             }
             else if (reactionResult.Result.Emoji == blueSquareEmoji)
             {
                 AlarmData.AlarmShortBreak = newUserTime;
-                await context.Channel.SendMessageAsync($"Short Break is now: " +
+                await context.Channel.SendMessageAsync($"{intervalType} is now: " +
                     $"**{AlarmData.AlarmShortBreak}**.").ConfigureAwait(false);
+
+                TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
+                secondsUntilTimedOut = timeToResetReaction;
             }
             else if (reactionResult.Result.Emoji == greenSquareEmoji)
             {
                 AlarmData.AlarmLongBreak = newUserTime;
-                await context.Channel.SendMessageAsync($"Work Interval is now: " +
+                await context.Channel.SendMessageAsync($"{intervalType} is now: " +
                     $"**{AlarmData.AlarmLongBreak}**.").ConfigureAwait(false);
+
+                TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
+                secondsUntilTimedOut = timeToResetReaction;
             }
             else
                 await context.Channel.SendMessageAsync("Timer has been cancelled.").ConfigureAwait(false);
@@ -137,11 +152,11 @@ namespace PomodoroBot.Commands
             {
                 Title = "Pomodoro Bot Timer",
                 Description = 
-                    $"Timer set with settings:\n" +
-                    $"Work Interval: **{AlarmData.AlarmDuration}**\n" +
-                    $"Short Break: **{AlarmData.AlarmShortBreak}**\n" +
-                    $"Long Break: **{AlarmData.AlarmLongBreak}**\n" +
-                    $"\nReact to confirm.",
+                    $"Timer set with settings:\n\n" +
+                    $"Work Interval: **{AlarmData.AlarmDuration}**\n\n" +
+                    $"Short Break: **{AlarmData.AlarmShortBreak}**\n\n" +
+                    $"Long Break: **{AlarmData.AlarmLongBreak}**\n\n" +
+                    $"React to confirm.",
                 Color = new DiscordColor(238, 64, 54)
             };
 
@@ -179,10 +194,6 @@ namespace PomodoroBot.Commands
             }
             else
                 await context.Channel.SendMessageAsync("Timer has been cancelled.").ConfigureAwait(false);
-
-
-
-
         }
 
 
