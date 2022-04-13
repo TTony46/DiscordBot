@@ -25,8 +25,9 @@ namespace PomodoroBot.Commands
     }
     public class TimerCommands : BaseCommandModule
     {
+        // IDEA : Make a do-while loop instead, so the user does not have to keep spamming ;settings in the voice channel
         [Command("settings")]
-        [Description("UPDATEME DESCRIPTION FOR TIMER.\n" +
+        [Description("Change the time interval settings for the Pomodoro Timer\n" +
             "Example: settings")]
         public async Task ChangeSettings(CommandContext context)
         {
@@ -34,98 +35,191 @@ namespace PomodoroBot.Commands
             var redSquareEmoji = DiscordEmoji.FromName(context.Client, ":red_square:");
             var blueSquareEmoji = DiscordEmoji.FromName(context.Client, ":blue_square:");
             var greenSquareEmoji = DiscordEmoji.FromName(context.Client, ":green_square:");
+            var greenCheckmarkEmoji = DiscordEmoji.FromName(context.Client, ":white_check_mark:");
+            var redXMarkEmoji = DiscordEmoji.FromName(context.Client, ":x:");
 
-            var displayEmbed = new DiscordEmbedBuilder()
+            bool userContinue;
+            do
             {
-                Title = "Current Settings",
-                Description =
-                    $"{redSquareEmoji} Work Interval: **{AlarmData.AlarmDuration}**\n\n" +
-                    $"{blueSquareEmoji} Short Break: **{AlarmData.AlarmShortBreak}**\n\n" +
-                    $"{greenSquareEmoji} Long Break: **{AlarmData.AlarmLongBreak}**\n\n" +
-                    "React to the corresponding emoji to change the setting",
-                Color = new DiscordColor(238, 64, 54)
-            };
+                userContinue = true;
+                var displayEmbed = new DiscordEmbedBuilder()
+                {
+                    Title = "Current Settings",
+                    Description =
+                        $"{redSquareEmoji} Work Interval: **{AlarmData.AlarmDuration}**\n\n" +
+                        $"{blueSquareEmoji} Short Break: **{AlarmData.AlarmShortBreak}**\n\n" +
+                        $"{greenSquareEmoji} Long Break: **{AlarmData.AlarmLongBreak}**\n\n" +
+                        "React to the corresponding emoji to change the setting",
+                    Color = new DiscordColor(238, 64, 54)
+                };
 
-            var message = await context.Channel.SendMessageAsync(embed: displayEmbed).ConfigureAwait(false);
-            await message.CreateReactionAsync(redSquareEmoji);
-            await Task.Delay(250);
-            await message.CreateReactionAsync(blueSquareEmoji);
-            await Task.Delay(250);
-            await message.CreateReactionAsync(greenSquareEmoji);
+                var message = await context.Channel.SendMessageAsync(embed: displayEmbed).ConfigureAwait(false);
+                await message.CreateReactionAsync(redSquareEmoji);
+                await Task.Delay(250);
+                await message.CreateReactionAsync(blueSquareEmoji);
+                await Task.Delay(250);
+                await message.CreateReactionAsync(greenSquareEmoji);
 
-            TimeSpan secondsUntilTimedOut = TimeSpan.FromSeconds(10);
+                TimeSpan secondsUntilTimedOut = TimeSpan.FromSeconds(10);
 
-            var reactionResult = await interactivity.WaitForReactionAsync(x =>
-                x.Message == message
-                && x.User == context.User
-                && (x.Emoji == redSquareEmoji
-                || x.Emoji == blueSquareEmoji
-                || x.Emoji == greenSquareEmoji),
-                secondsUntilTimedOut).ConfigureAwait(false);
+                var reactionResult = await interactivity.WaitForReactionAsync(x =>
+                    x.Message == message
+                    && x.User == context.User
+                    && (x.Emoji == redSquareEmoji
+                    || x.Emoji == blueSquareEmoji
+                    || x.Emoji == greenSquareEmoji),
+                    secondsUntilTimedOut).ConfigureAwait(false);
 
-            if (reactionResult.TimedOut)
-            {
-                await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
-                TimeSpan timeToResetReaction = TimeSpan.FromSeconds(1);
-                secondsUntilTimedOut = timeToResetReaction;
-                return;
-            }
+                if (reactionResult.TimedOut)
+                {
+                    await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                    TimeSpan timeToResetReaction = TimeSpan.FromSeconds(1);
+                    secondsUntilTimedOut = timeToResetReaction;
+                    return;
+                }
 
-            bool isValid = false;
-            if (reactionResult.Result.Emoji == null) return;
+                bool isValid = false;
+                if (reactionResult.Result.Emoji == null) return;
 
-            isValid = (reactionResult.Result.Emoji == redSquareEmoji
-                        || reactionResult.Result.Emoji == blueSquareEmoji
-                        || reactionResult.Result.Emoji == greenSquareEmoji);
+                isValid = (reactionResult.Result.Emoji == redSquareEmoji
+                            || reactionResult.Result.Emoji == blueSquareEmoji
+                            || reactionResult.Result.Emoji == greenSquareEmoji);
 
-            string intervalType = "";
-            if (reactionResult.Result.Emoji == redSquareEmoji) intervalType = "Work Interval";
-            else if (reactionResult.Result.Emoji == blueSquareEmoji) intervalType = "Short Break";
-            else if (reactionResult.Result.Emoji == greenSquareEmoji) intervalType = "Long Break";
+                string intervalType = "";
+                if (reactionResult.Result.Emoji == redSquareEmoji) intervalType = "Work Interval";
+                else if (reactionResult.Result.Emoji == blueSquareEmoji) intervalType = "Short Break";
+                else if (reactionResult.Result.Emoji == greenSquareEmoji) intervalType = "Long Break";
 
-            TimeSpan newUserTime = TimeSpan.FromMinutes(0);
+                TimeSpan newUserTime = TimeSpan.FromMinutes(0);
 
-            if (isValid)
-            {
-                await context.Channel.SendMessageAsync(
-                    $"How many minutes did you want to set the {intervalType} as? i.e : 45").ConfigureAwait(false); ;
-                var response = await interactivity.WaitForMessageAsync(x =>
-                    x.Channel == context.Channel).ConfigureAwait(false);
-               
-                int result = Convert.ToInt32(response.Result.Content);
-                newUserTime = TimeSpan.FromMinutes(result);
-            }       
-            
-            // If the user reacts to the message
-            if (reactionResult.Result.Emoji == redSquareEmoji)
-            {
-                AlarmData.AlarmDuration = newUserTime;
-                await context.Channel.SendMessageAsync($"{intervalType} is now: " +
-                    $"**{AlarmData.AlarmDuration}**.").ConfigureAwait(false);
+                if (isValid)
+                {
+                    await context.Channel.SendMessageAsync(
+                        $"How many minutes did you want to set the {intervalType} as? i.e : 45").ConfigureAwait(false); ;
+                    var response = await interactivity.WaitForMessageAsync(x =>
+                        x.Channel == context.Channel).ConfigureAwait(false);
 
-                TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
-                secondsUntilTimedOut = timeToResetReaction;
-            }
-            else if (reactionResult.Result.Emoji == blueSquareEmoji)
-            {
-                AlarmData.AlarmShortBreak = newUserTime;
-                await context.Channel.SendMessageAsync($"{intervalType} is now: " +
-                    $"**{AlarmData.AlarmShortBreak}**.").ConfigureAwait(false);
+                    int result = Convert.ToInt32(response.Result.Content);
+                    newUserTime = TimeSpan.FromMinutes(result);
+                }
 
-                TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
-                secondsUntilTimedOut = timeToResetReaction;
-            }
-            else if (reactionResult.Result.Emoji == greenSquareEmoji)
-            {
-                AlarmData.AlarmLongBreak = newUserTime;
-                await context.Channel.SendMessageAsync($"{intervalType} is now: " +
-                    $"**{AlarmData.AlarmLongBreak}**.").ConfigureAwait(false);
+                // If the user reacts to the message
+                if (reactionResult.Result.Emoji == redSquareEmoji)
+                {
+                    AlarmData.AlarmDuration = newUserTime;
+                    await context.Channel.SendMessageAsync($"{intervalType} is now: " +
+                        $"**{AlarmData.AlarmDuration}**.").ConfigureAwait(false);
 
-                TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
-                secondsUntilTimedOut = timeToResetReaction;
-            }
-            else
-                await context.Channel.SendMessageAsync("Timer has been cancelled.").ConfigureAwait(false);
+                    var continueMsg = await context.Channel.SendMessageAsync("Do you want to change any other settings?");
+                    await continueMsg.CreateReactionAsync(greenCheckmarkEmoji);
+                    await Task.Delay(250);
+                    await continueMsg.CreateReactionAsync(redXMarkEmoji);
+                    await Task.Delay(250);
+
+                    var continueResult = await interactivity.WaitForReactionAsync(x =>
+                        x.Message == continueMsg
+                        && x.User == context.User
+                        && (x.Emoji == greenCheckmarkEmoji
+                        || x.Emoji == redXMarkEmoji),
+                        secondsUntilTimedOut).ConfigureAwait(false);
+
+                    if (continueResult.TimedOut)
+                    {
+                        await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                        TimeSpan timeoutSeconds = TimeSpan.FromSeconds(1);
+                        secondsUntilTimedOut = timeoutSeconds;
+                        return;
+                    }
+
+                    if (continueResult.Result.Emoji == greenCheckmarkEmoji) userContinue = true;
+                    else if (continueResult.Result.Emoji == redXMarkEmoji)
+                    {
+                        userContinue = false;
+                        TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
+                        secondsUntilTimedOut = timeToResetReaction;
+                        await context.Channel.SendMessageAsync("Settings have been confirmed.").ConfigureAwait(false);
+                        return;
+                    }
+                }
+                else if (reactionResult.Result.Emoji == blueSquareEmoji)
+                {
+                    AlarmData.AlarmShortBreak = newUserTime;
+                    await context.Channel.SendMessageAsync($"{intervalType} is now: " +
+                        $"**{AlarmData.AlarmShortBreak}**.").ConfigureAwait(false);
+
+                    var continueMsg = await context.Channel.SendMessageAsync("Do you want to change any other settings?");
+                    await continueMsg.CreateReactionAsync(greenCheckmarkEmoji);
+                    await Task.Delay(250);
+                    await continueMsg.CreateReactionAsync(redXMarkEmoji);
+                    await Task.Delay(250);
+
+                    var continueResult = await interactivity.WaitForReactionAsync(x =>
+                        x.Message == continueMsg
+                        && x.User == context.User
+                        && (x.Emoji == greenCheckmarkEmoji
+                        || x.Emoji == redXMarkEmoji),
+                        secondsUntilTimedOut).ConfigureAwait(false);
+
+                    if (continueResult.TimedOut)
+                    {
+                        await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                        TimeSpan timeoutSeconds = TimeSpan.FromSeconds(1);
+                        secondsUntilTimedOut = timeoutSeconds;
+                        return;
+                    }
+
+                    if (continueResult.Result.Emoji == greenCheckmarkEmoji) userContinue = true;
+                    else if (continueResult.Result.Emoji == redXMarkEmoji)
+                    {
+                        userContinue = false;
+                        TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
+                        secondsUntilTimedOut = timeToResetReaction;
+                        await context.Channel.SendMessageAsync("Settings have been confirmed.").ConfigureAwait(false);
+                        return;
+                    }
+                }
+                else if (reactionResult.Result.Emoji == greenSquareEmoji)
+                {
+                    AlarmData.AlarmLongBreak = newUserTime;
+                    await context.Channel.SendMessageAsync($"{intervalType} is now: " +
+                        $"**{AlarmData.AlarmLongBreak}**.").ConfigureAwait(false);
+
+                    var continueMsg = await context.Channel.SendMessageAsync("Do you want to change any other settings?");
+                    await continueMsg.CreateReactionAsync(greenCheckmarkEmoji);
+                    await Task.Delay(250);
+                    await continueMsg.CreateReactionAsync(redXMarkEmoji);
+                    await Task.Delay(250);
+
+                    var continueResult = await interactivity.WaitForReactionAsync(x =>
+                        x.Message == continueMsg
+                        && x.User == context.User
+                        && (x.Emoji == greenCheckmarkEmoji
+                        || x.Emoji == redXMarkEmoji),
+                        secondsUntilTimedOut).ConfigureAwait(false);
+
+                    if (continueResult.TimedOut)
+                    {
+                        await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                        TimeSpan timeoutSeconds = TimeSpan.FromSeconds(1);
+                        secondsUntilTimedOut = timeoutSeconds;
+                        return;
+                    }
+                    if (continueResult.Result.Emoji == greenCheckmarkEmoji) userContinue = true;
+                    else if (continueResult.Result.Emoji == redXMarkEmoji)
+                    {
+                        userContinue = false;
+                        TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
+                        secondsUntilTimedOut = timeToResetReaction;
+                        await context.Channel.SendMessageAsync("Settings have been confirmed.").ConfigureAwait(false);
+                        return;
+                    }
+                }
+                else
+                {
+                    await context.Channel.SendMessageAsync("Timer has been cancelled.").ConfigureAwait(false);
+                    userContinue = false;
+                }
+            } while (userContinue);
         }
 
         [Command("pomodoro")]
