@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 
 namespace PomodoroBot.Commands
 {
+    // Default Pomodoro timer settings
     public class AlarmData
     {
         public DateTime AlarmTime;
@@ -25,7 +26,6 @@ namespace PomodoroBot.Commands
     }
     public class TimerCommands : BaseCommandModule
     {
-        // IDEA : Make a do-while loop instead, so the user does not have to keep spamming ;settings in the voice channel
         [Command("settings")]
         [Description("Change the time interval settings for the Pomodoro Timer\n" +
             "Example: settings")]
@@ -72,7 +72,7 @@ namespace PomodoroBot.Commands
 
                 if (reactionResult.TimedOut)
                 {
-                    await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                    await context.Channel.SendMessageAsync("**Setting change has timed out.**").ConfigureAwait(false);
                     TimeSpan timeToResetReaction = TimeSpan.FromSeconds(1);
                     secondsUntilTimedOut = timeToResetReaction;
                     return;
@@ -125,7 +125,7 @@ namespace PomodoroBot.Commands
 
                     if (continueResult.TimedOut)
                     {
-                        await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                        await context.Channel.SendMessageAsync("**Setting change has timed out.**").ConfigureAwait(false);
                         TimeSpan timeoutSeconds = TimeSpan.FromSeconds(1);
                         secondsUntilTimedOut = timeoutSeconds;
                         return;
@@ -137,7 +137,7 @@ namespace PomodoroBot.Commands
                         userContinue = false;
                         TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
                         secondsUntilTimedOut = timeToResetReaction;
-                        await context.Channel.SendMessageAsync("Settings have been confirmed.").ConfigureAwait(false);
+                        await context.Channel.SendMessageAsync("**Settings have been confirmed.**").ConfigureAwait(false);
                         return;
                     }
                 }
@@ -162,7 +162,7 @@ namespace PomodoroBot.Commands
 
                     if (continueResult.TimedOut)
                     {
-                        await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                        await context.Channel.SendMessageAsync("**Setting change has timed out.**").ConfigureAwait(false);
                         TimeSpan timeoutSeconds = TimeSpan.FromSeconds(1);
                         secondsUntilTimedOut = timeoutSeconds;
                         return;
@@ -174,7 +174,7 @@ namespace PomodoroBot.Commands
                         userContinue = false;
                         TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
                         secondsUntilTimedOut = timeToResetReaction;
-                        await context.Channel.SendMessageAsync("Settings have been confirmed.").ConfigureAwait(false);
+                        await context.Channel.SendMessageAsync("**Settings have been confirmed.**").ConfigureAwait(false);
                         return;
                     }
                 }
@@ -199,7 +199,7 @@ namespace PomodoroBot.Commands
 
                     if (continueResult.TimedOut)
                     {
-                        await context.Channel.SendMessageAsync("Setting change has timed out.").ConfigureAwait(false);
+                        await context.Channel.SendMessageAsync("**Setting change has timed out.**").ConfigureAwait(false);
                         TimeSpan timeoutSeconds = TimeSpan.FromSeconds(1);
                         secondsUntilTimedOut = timeoutSeconds;
                         return;
@@ -210,13 +210,13 @@ namespace PomodoroBot.Commands
                         userContinue = false;
                         TimeSpan timeToResetReaction = TimeSpan.FromMilliseconds(250);
                         secondsUntilTimedOut = timeToResetReaction;
-                        await context.Channel.SendMessageAsync("Settings have been confirmed.").ConfigureAwait(false);
+                        await context.Channel.SendMessageAsync("**Settings have been confirmed.**").ConfigureAwait(false);
                         return;
                     }
                 }
                 else
                 {
-                    await context.Channel.SendMessageAsync("Timer has been cancelled.").ConfigureAwait(false);
+                    await context.Channel.SendMessageAsync("**Settings change cancelled.**").ConfigureAwait(false);
                     userContinue = false;
                 }
             } while (userContinue);
@@ -239,6 +239,7 @@ namespace PomodoroBot.Commands
 
             var interactivity = context.Client.GetInteractivity();
             var checkmarkEmoji = DiscordEmoji.FromName(context.Client, ":white_check_mark:");
+            var redXMarkEmoji = DiscordEmoji.FromName(context.Client, ":x:");
             var duration = AlarmData.AlarmDuration;
 
             // Creates the embed to send the message in
@@ -256,20 +257,30 @@ namespace PomodoroBot.Commands
 
             var message = await context.Channel.SendMessageAsync(embed: displayEmbed).ConfigureAwait(false);
             await message.CreateReactionAsync(checkmarkEmoji);
+            await Task.Delay(250);
+            await message.CreateReactionAsync(redXMarkEmoji);
+
+            TimeSpan secondsUntilTimedOut = TimeSpan.FromSeconds(10);
 
             var reactionResult = await interactivity.WaitForReactionAsync(x =>
                 x.Message == message
                 && x.User == context.User
-                && x.Emoji == checkmarkEmoji,
-                TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+                && (x.Emoji == checkmarkEmoji
+                || x.Emoji == redXMarkEmoji),
+                secondsUntilTimedOut).ConfigureAwait(false);
 
             if (reactionResult.TimedOut)
-                await context.Channel.SendMessageAsync("Timed out. Timer has been cancelled.").ConfigureAwait(false);
-
+            {
+                await context.Channel.SendMessageAsync("**Timed out. Timer has been cancelled.**").ConfigureAwait(false);
+                TimeSpan timeToResetReaction = TimeSpan.FromSeconds(1);
+                secondsUntilTimedOut = timeToResetReaction;
+                return;
+            }
             // If the user reacts to the message
             else if (reactionResult.Result.Emoji == checkmarkEmoji)
             {
-                await context.Channel.SendMessageAsync("Pomodoro Timer confirmed.").ConfigureAwait(false);
+                // Create the timer commands.
+                await context.Channel.SendMessageAsync("**Timer confirmed.**").ConfigureAwait(false);
                 while (true)
                 {
                     // Four Pomodoros before a large break
@@ -286,10 +297,17 @@ namespace PomodoroBot.Commands
                     }
                 }
             }
-            else
-                await context.Channel.SendMessageAsync("Timer has been cancelled.").ConfigureAwait(false);
-        }
+            else if (reactionResult.Result.Emoji == redXMarkEmoji)
+            {
+                await context.Channel.SendMessageAsync("**Timer cancelled.**").ConfigureAwait(false);
 
+                TimeSpan timeoutSeconds = TimeSpan.FromSeconds(1);
+                secondsUntilTimedOut = timeoutSeconds;
+                return;
+            }
+            else
+                await context.Channel.SendMessageAsync("**Timer has been cancelled.**").ConfigureAwait(false);
+        }
 
         [Command("timerset")]
         [Description("UPDATEME DESCRIPTION FOR TIMER.\n" +
@@ -321,9 +339,80 @@ namespace PomodoroBot.Commands
                 DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day,
                 DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second), waitingUntil)) == 0)
             {
-                // TODO: Play a sound when the timer has been reached.
+
+                // TODO: Play a sound instead when the timer has been reached.
                 await context.Channel.SendMessageAsync($"@everyone Time has been reached!");
+                var fileName = @"C:\Users\Tony\Downloads\HUHalarmSound.mp3";
+                await Play(context, fileName);
             }  
+        }
+
+        [Command("play")]
+        [Description("Plays an audio file.")]
+        public async Task Play(CommandContext ctx, [RemainingText, Description("Full path to the file to play.")] string filename)
+        {
+            // check whether VNext is enabled
+            var vnext = ctx.Client.GetVoiceNext();
+            if (vnext == null)
+            {
+                // not enabled
+                await ctx.RespondAsync("VNext is not enabled or configured.");
+                return;
+            }
+
+            // check whether we aren't already connected
+            var vnc = vnext.GetConnection(ctx.Guild);
+            if (vnc == null)
+            {
+                // already connected
+                await ctx.RespondAsync("Not connected in this guild.");
+                return;
+            }
+
+            // check if file exists
+            if (!File.Exists(filename))
+            {
+                // file does not exist
+                await ctx.RespondAsync($"File `{filename}` does not exist.");
+                return;
+            }
+
+            // wait for current playback to finish
+            while (vnc.IsPlaying)
+                await vnc.WaitForPlaybackFinishAsync();
+
+            // play
+            Exception exc = null;
+            await ctx.Message.RespondAsync($"Playing `{filename}`");
+
+            try
+            {
+                await vnc.SendSpeakingAsync(true);
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = @"C:\Users\Tony\Desktop\PomodoroBot\ffmpeg\bin\ffmpeg.exe",
+                    Arguments = $@"-i ""{filename}"" -ac 2 -f s16le -ar 48000 pipe:1 -loglevel quiet",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false
+                };
+                var ffmpeg = Process.Start(psi);
+                var ffout = ffmpeg.StandardOutput.BaseStream;
+
+                var txStream = vnc.GetTransmitSink();
+                await ffout.CopyToAsync(txStream);
+                await txStream.FlushAsync();
+                await vnc.WaitForPlaybackFinishAsync();
+            }
+            catch (Exception ex) { exc = ex; }
+            finally
+            {
+                await vnc.SendSpeakingAsync(false);
+                await ctx.Message.RespondAsync($"Finished playing `{filename}`");
+            }
+
+            if (exc != null)       
+                await ctx.RespondAsync($"An exception occured during playback: `{exc.GetType()}: {exc.Message}`");
         }
 
         [Command("join")]
@@ -395,6 +484,8 @@ namespace PomodoroBot.Commands
         }
 
         
+
+
     }
 
 }
