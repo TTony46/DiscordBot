@@ -22,9 +22,9 @@ namespace PomodoroBot.Commands
         public DateTime AlarmTime;
         public static TimeSpan AlarmDuration = TimeSpan.FromMinutes(1);
         public static TimeSpan AlarmShortBreak = TimeSpan.FromMinutes(1);
-        public static TimeSpan AlarmLongBreak = TimeSpan.FromMinutes(1);
-        public static string AlarmFilePathMP3 = @"C:\Users\Tony\Desktop\PomodoroBot\AlarmSound.mp3";
+        public static TimeSpan AlarmLongBreak = TimeSpan.FromMinutes(1);        
         public static string AlarmFilePathFFMPEG = @"C:\Users\Tony\Desktop\PomodoroBot\ffmpeg\bin\ffmpeg.exe";
+        public static string AlarmFilePathMP3 = @"C:\Users\Tony\Desktop\PomodoroBot\AlarmSound.mp3";
         public static bool AlarmOn = true;
     }
     public class TimerCommands : BaseCommandModule
@@ -277,17 +277,21 @@ namespace PomodoroBot.Commands
 
                 if (reactionResult.TimedOut)
                 {
-                    await context.Channel.SendMessageAsync("**Timed out. Timer has been cancelled.**").ConfigureAwait(false);
+                    await context.Channel.SendMessageAsync(
+                        "**Timed out. Timer has been cancelled.**").ConfigureAwait(false);
                     TimeSpan timeToResetReaction = TimeSpan.FromSeconds(1);
                     secondsUntilTimedOut = timeToResetReaction;
                     return;
                 }
+
                 // If the user reacts to the message
                 else if (reactionResult.Result.Emoji == checkmarkEmoji)
                 {
-                    // Create the timer commands.
+                    // Sets an active Pomodoro session.
                     await context.Channel.SendMessageAsync("**Timer confirmed.**").ConfigureAwait(false);
 
+                    // User might want to stop the timer midway anytime, hence the many
+                    // checkpoints that check if the timer is still active. 
                     while (AlarmData.AlarmOn)
                     {
                         // Four Pomodoros before a large break
@@ -298,153 +302,28 @@ namespace PomodoroBot.Commands
 
                             await Timer(context, duration, vstate.Channel);
 
-                            //ShortBreak
-
-                            // formatted like "11:30" for 11 hours and 30 minutes.
-                            string shortAlarmFormattedHoursAndMinutes = AlarmData.AlarmShortBreak.ToString(@"hh\:mm");
-                            string minutesFromShortBreak = "";
-                            string hoursFromShortBreak = "";
-
-                            // If the first digit (hours) of the time is not 0, hoursFromLongBreak is something like "20 hours".
-                            if (shortAlarmFormattedHoursAndMinutes[0] != '0')
-                            {
-                                hoursFromShortBreak =
-                                    shortAlarmFormattedHoursAndMinutes.Substring(0, 2) + " hours";
-                            }
-
-                            // If the first digit (hours) of the time is 0, but the second digit (hours) is not zero, 
-                            // hoursFromLongBreal something like "5 hours".
-                            if (shortAlarmFormattedHoursAndMinutes[0] == '0' &&
-                                shortAlarmFormattedHoursAndMinutes[1] != '0')
-                            {
-                                // for the case of only 1 hour, hours-> hour . 
-                                if (shortAlarmFormattedHoursAndMinutes[1] == '1')
-                                {
-                                    hoursFromShortBreak =
-                                        shortAlarmFormattedHoursAndMinutes[1] + " hour";
-                                }
-                                else
-                                    hoursFromShortBreak =
-                                        shortAlarmFormattedHoursAndMinutes[1] + " hours";
-                            }
-
-                            //MINUTES from format 20:22 with 20 hours and 22 minutes
-                            if (shortAlarmFormattedHoursAndMinutes[3] != '0')
-                            {
-                                minutesFromShortBreak =
-                                    shortAlarmFormattedHoursAndMinutes.Substring(3, 2) + " minutes";
-                            }
-
-                            if (shortAlarmFormattedHoursAndMinutes[3] == '0' &&
-                                shortAlarmFormattedHoursAndMinutes[4] != '0')
-                            {
-                                if (shortAlarmFormattedHoursAndMinutes[4] == '1')
-                                {
-                                    minutesFromShortBreak =
-                                        shortAlarmFormattedHoursAndMinutes[4] + " minute";
-                                }
-                                else
-                                    minutesFromShortBreak =
-                                        shortAlarmFormattedHoursAndMinutes[4] + " minutes";
-                            }
-
-                            string concatenatedShortBreakString = "";
-                            bool shortBreakHoursAreGiven = (hoursFromShortBreak != "");
-                            bool shortBreakMinutesAreGiven = (minutesFromShortBreak != "");
-
-                            if (shortBreakHoursAreGiven && shortBreakMinutesAreGiven)
-                            {
-                                concatenatedShortBreakString = hoursFromShortBreak + " and " + minutesFromShortBreak;
-                            }
-                            else if ((!shortBreakHoursAreGiven) && shortBreakMinutesAreGiven)
-                            {
-                                concatenatedShortBreakString = minutesFromShortBreak;
-                            }
-                            else if (shortBreakHoursAreGiven && (!shortBreakMinutesAreGiven))
-                            {
-                                concatenatedShortBreakString = hoursFromShortBreak;
-                            }
+                            if (!AlarmData.AlarmOn) { return; }
+                            // Announces and sets a short break when work time is finished
+                            string shortBreakString = TimeToStringFormatted(AlarmData.AlarmShortBreak);
 
                             await context.Channel.SendMessageAsync(
-                                $"Short Break: Take a break for **{concatenatedShortBreakString}**.")
-                                .ConfigureAwait(false);
+                                $"Short Break: Take a break for **{shortBreakString}**.").ConfigureAwait(false);
 
                             await Timer(context, AlarmData.AlarmShortBreak, vstate.Channel);
                         }
 
-                        //After 4 minutes, display a long break
+                        if (!AlarmData.AlarmOn) { return; }
 
-                        // formatted like "11:30" for 11 hours and 30 minutes.
-                        string alarmFormattedHoursAndMinutes = AlarmData.AlarmLongBreak.ToString(@"hh\:mm");
-                        string minutesFromLongBreak = "";
-                        string hoursFromLongBreak = "";
+                        //After 4 work intervals, display and set a long break
+                        string longBreakString = TimeToStringFormatted(AlarmData.AlarmLongBreak);
 
-                        // If the first digit (hours) of the time is not 0, hoursFromLongBreak is something like "20 hours".
-                        if (alarmFormattedHoursAndMinutes[0] != '0')
-                            hoursFromLongBreak =
-                                alarmFormattedHoursAndMinutes.Substring(0, 2) + " hours";
-
-                        // If the first digit (hours) of the time is 0, but the second digit (hours) is not zero, 
-                        // hoursFromLongBreal something like "5 hours".
-                        if (alarmFormattedHoursAndMinutes[0] == '0' &&
-                            alarmFormattedHoursAndMinutes[1] != '0')
-                        {
-                            // for the case of only 1 hour, hours-> hour . 
-                            if (alarmFormattedHoursAndMinutes[1] == '1')
-                            {
-                                hoursFromLongBreak =
-                                    alarmFormattedHoursAndMinutes[1] + " hour";
-                            }
-                            else
-                                hoursFromLongBreak =
-                                    alarmFormattedHoursAndMinutes[1] + " hours";
-                        }
-
-                        //MINUTES from format 20:22 with 20 hours and 22 minutes
-                        if (alarmFormattedHoursAndMinutes[3] != '0')
-                            minutesFromLongBreak =
-                                alarmFormattedHoursAndMinutes.Substring(3, 2) + " minutes";
-
-                        if (alarmFormattedHoursAndMinutes[3] == '0' &&
-                            alarmFormattedHoursAndMinutes[4] != '0')
-                        {
-                            if (alarmFormattedHoursAndMinutes[4] == '1')
-                            {
-                                minutesFromLongBreak =
-                                    alarmFormattedHoursAndMinutes[4] + " minute";
-                            }
-                            else
-                                minutesFromLongBreak =
-                                    alarmFormattedHoursAndMinutes[4] + " minutes";
-                        }
-
-                        string concatenatedLongBreakString = "";
-                        bool hoursAreGiven = (hoursFromLongBreak != "");
-                        bool minutesAreGiven = (minutesFromLongBreak != "");
-
-                        if (hoursAreGiven && minutesAreGiven)
-                        {
-                            concatenatedLongBreakString = hoursFromLongBreak + " and " + minutesFromLongBreak;
-                        }
-                        else if ((!hoursAreGiven) && minutesAreGiven)
-                        {
-                            concatenatedLongBreakString = minutesFromLongBreak;
-                        }
-                        else if (hoursAreGiven && (!minutesAreGiven))
-                        {
-                            concatenatedLongBreakString = hoursFromLongBreak;
-                        }
-
-                        if (hoursFromLongBreak != "")
-                        {
-                            await context.Channel.SendMessageAsync(
-                                $"Long Break: Take a break for **{concatenatedLongBreakString}**.")
-                                .ConfigureAwait(false);
-                        }
+                        await context.Channel.SendMessageAsync(
+                                $"Long Break: Take a break for **{longBreakString}**.").ConfigureAwait(false);
 
                         await Timer(context, AlarmData.AlarmLongBreak, vstate.Channel);
                     }
                 }
+
                 else if (reactionResult.Result.Emoji == redXMarkEmoji)
                 {
                     await context.Channel.SendMessageAsync("**Timer cancelled.**").ConfigureAwait(false);
@@ -462,7 +341,7 @@ namespace PomodoroBot.Commands
         [Description("UPDATEME DESCRIPTION FOR TIMER.\n" +
             "Example: timerset 1h15m30s ChannelName")]
         public async Task Timer(CommandContext context, TimeSpan duration, DiscordChannel channel)
-        {   
+        {
             if (AlarmData.AlarmOn)
             {
                 await Join(context, channel);
@@ -491,8 +370,6 @@ namespace PomodoroBot.Commands
                     DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second), waitingUntil)) == 0
                     && AlarmData.AlarmOn)
                 {
-
-                    // TODO: Play a sound instead when the timer has been reached.
                     await context.Channel.SendMessageAsync($"@everyone Time has been reached!");
                     await Play(context, AlarmData.AlarmFilePathMP3);
                 }
@@ -567,7 +444,6 @@ namespace PomodoroBot.Commands
                 await ctx.RespondAsync($"An exception occured during playback: `{exc.GetType()}: {exc.Message}`");
         }
 
-        // TODO: make it so the timer actually stops it and resets the pomodoro counting
         [Command("stoptimer")]
         [Description("Leaves the voice channel.\n" +
             "Example: stoptimer")]
@@ -596,9 +472,8 @@ namespace PomodoroBot.Commands
 
             // disconnect
             vnc.Disconnect();
-            //await ctx.Channel.SendMessageAsync("Disconnected");
+            await ctx.Channel.SendMessageAsync("Timer has been stopped.");
         }
-
 
 
         [Command("join")]
@@ -667,6 +542,76 @@ namespace PomodoroBot.Commands
             // disconnect
             vnc.Disconnect();
             //await ctx.Channel.SendMessageAsync("Disconnected");
+        }
+
+        public string TimeToStringFormatted(TimeSpan time)
+        {
+            string timeFormattedHoursMinutes = time.ToString(@"hh\:mm");
+            string hours = "";
+            string minutes = "";
+            
+
+            if (timeFormattedHoursMinutes[0] != '0')
+            {
+                hours =
+                    timeFormattedHoursMinutes.Substring(0, 2) + " hours";
+            }
+
+            // If the first digit (hours) of the time is 0, but the second digit (hours) is not zero, 
+            // hoursFromLongBreal something like "5 hours".
+            if (timeFormattedHoursMinutes[0] == '0' &&
+                timeFormattedHoursMinutes[1] != '0')
+            {
+                // for the case of only 1 hour, hours-> hour . 
+                if (timeFormattedHoursMinutes[1] == '1')
+                {
+                    hours =
+                        timeFormattedHoursMinutes[1] + " hour";
+                }
+                else
+                    hours =
+                        timeFormattedHoursMinutes[1] + " hours";
+            }
+
+            //MINUTES from format 20:22 with 20 hours and 22 minutes
+            if (timeFormattedHoursMinutes[3] != '0')
+            {
+                minutes =
+                    timeFormattedHoursMinutes.Substring(3, 2) + " minutes";
+            }
+
+            if (timeFormattedHoursMinutes[3] == '0' &&
+                timeFormattedHoursMinutes[4] != '0')
+            {
+                if (timeFormattedHoursMinutes[4] == '1')
+                {
+                    minutes =
+                        timeFormattedHoursMinutes[4] + " minute";
+                }
+                else
+                    minutes =
+                        timeFormattedHoursMinutes[4] + " minutes";
+            }
+
+            // adds to the string depending on if there are hours and/or minutes
+            string concatenatedTimeString = "";
+            bool hoursAreGiven = (hours != "");
+            bool minutesAreGiven = (minutes != "");
+
+            if (hoursAreGiven && minutesAreGiven)
+            {
+                concatenatedTimeString = hours + " and " + minutes;
+            }
+            else if ((!hoursAreGiven) && minutesAreGiven)
+            {
+                concatenatedTimeString = minutes;
+            }
+            else if (hoursAreGiven && (!minutesAreGiven))
+            {
+                concatenatedTimeString = hours;
+            }
+
+            return concatenatedTimeString;
         }
     }
 
