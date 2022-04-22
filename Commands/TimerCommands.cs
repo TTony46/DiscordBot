@@ -390,13 +390,13 @@ namespace PomodoroBot.Commands
                     await Task.Delay(750);
                 }
 
-                // Announces in the chat when target time has been reached and leaves.
+                // Plays a sound when the timer has been reached.
                 if ((DateTime.Compare(new DateTime(
                     DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day,
                     DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second), waitingUntil)) == 0
                     && AlarmData.AlarmOn)
                 {
-                    await context.Channel.SendMessageAsync($"@everyone Time has been reached!");
+                    await context.Channel.SendMessageAsync("Time has been reached!");
                     await Play(context, AlarmFilePath);
                 }
             }            
