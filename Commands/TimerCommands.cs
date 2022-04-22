@@ -24,7 +24,9 @@ namespace PomodoroBot.Commands
         public static TimeSpan AlarmShortBreak = TimeSpan.FromMinutes(1);
         public static TimeSpan AlarmLongBreak = TimeSpan.FromMinutes(1);        
         public static string AlarmFilePathFFMPEG = @"C:\Users\Tony\Desktop\PomodoroBot\ffmpeg\bin\ffmpeg.exe";
-        public static string AlarmFilePathMP3 = @"C:\Users\Tony\Desktop\PomodoroBot\AlarmSound.mp3";
+        public static string WorkIntervalAlarmSoundFilePathMP3 = @"C:\Users\Tony\Desktop\PomodoroBot\AlarmSound.mp3";
+        public static string ShortBreakAlarmSoundFilePathMP3 = @"C:\Users\Tony\Desktop\PomodoroBot\AlarmSound.mp3";
+        public static string LongBreakAlarmSoundFilePathMP3 = @"C:\Users\Tony\Desktop\PomodoroBot\AlarmSound.mp3";
         public static bool AlarmOn = true;
     }
     public class TimerCommands : BaseCommandModule
@@ -45,6 +47,7 @@ namespace PomodoroBot.Commands
             do
             {
                 userContinue = true;
+                // Displays the current settings in an embedded message
                 var displayEmbed = new DiscordEmbedBuilder()
                 {
                     Title = "Current Settings",
@@ -56,6 +59,8 @@ namespace PomodoroBot.Commands
                     Color = new DiscordColor(238, 64, 54)
                 };
 
+                // Sends the message and attaches reactions for the user to select and change,
+                // corresponding to the specific setting.
                 var message = await context.Channel.SendMessageAsync(embed: displayEmbed).ConfigureAwait(false);
                 await message.CreateReactionAsync(redSquareEmoji);
                 await Task.Delay(250);
@@ -63,8 +68,9 @@ namespace PomodoroBot.Commands
                 await Task.Delay(250);
                 await message.CreateReactionAsync(greenSquareEmoji);
 
-                TimeSpan secondsUntilTimedOut = TimeSpan.FromSeconds(10);
+                TimeSpan secondsUntilTimedOut = TimeSpan.FromSeconds(15);
 
+                // Waits for the user reaction and collects it.
                 var reactionResult = await interactivity.WaitForReactionAsync(x =>
                     x.Message == message
                     && x.User == context.User
@@ -88,6 +94,7 @@ namespace PomodoroBot.Commands
                             || reactionResult.Result.Emoji == blueSquareEmoji
                             || reactionResult.Result.Emoji == greenSquareEmoji);
 
+                // Red Square for Work Interval, Blue Square for Short Break, Green Square for Long Break.
                 string intervalType = "";
                 if (reactionResult.Result.Emoji == redSquareEmoji) intervalType = "Work Interval";
                 else if (reactionResult.Result.Emoji == blueSquareEmoji) intervalType = "Short Break";
@@ -95,6 +102,8 @@ namespace PomodoroBot.Commands
 
                 TimeSpan newUserTime = TimeSpan.FromMinutes(0);
 
+                // If the user reacts to the message, prompts them to send a number in the chat
+                // and collects that number as the TimeSpan minutes stored in newUserTime.
                 if (isValid)
                 {
                     await context.Channel.SendMessageAsync(
@@ -105,8 +114,16 @@ namespace PomodoroBot.Commands
                     int result = Convert.ToInt32(response.Result.Content);
                     newUserTime = TimeSpan.FromMinutes(result);
                 }
+                  
+                // -- FOR ALL CHOICES --
+                // Sets the correlating interval to the newUserTime.
+                //
+                // Prompts the user if they want to change anything else by 
+                //   sending a message and attaching two reactions for yes/no.
+                //
+                // If the user wants to continue, it sets bool userContinue to true
+                // and the do-while loop continues, otherwise sets it to false.
 
-                // If the user reacts to the message
                 if (reactionResult.Result.Emoji == redSquareEmoji)
                 {
                     AlarmData.AlarmDuration = newUserTime;
@@ -226,9 +243,8 @@ namespace PomodoroBot.Commands
         }
 
         [Command("pomodoro")]
-        [Description("UPDATEME DESCRIPTION FOR TIMER.\n" +
+        [Description("Sets a pomodoro session. 4 work intervals with separated by 3 short breaks and 1 long break\n" +
             "Example: pomodoro")]
-        
         public async Task Pomodoro(CommandContext context)
         {
             AlarmData.AlarmOn = true;
@@ -257,17 +273,20 @@ namespace PomodoroBot.Commands
                         $"Work Interval: **{AlarmData.AlarmDuration}**\n\n" +
                         $"Short Break: **{AlarmData.AlarmShortBreak}**\n\n" +
                         $"Long Break: **{AlarmData.AlarmLongBreak}**\n\n" +
-                        $"React to confirm.",
+                        $"Use the settings command to change.\n" + 
+                        $"**React to confirm.**",
                     Color = new DiscordColor(238, 64, 54)
                 };
 
+                // Creates an embedded message with two reactions attached as choices for the user.
                 var message = await context.Channel.SendMessageAsync(embed: displayEmbed).ConfigureAwait(false);
                 await message.CreateReactionAsync(checkmarkEmoji);
                 await Task.Delay(250);
                 await message.CreateReactionAsync(redXMarkEmoji);
 
-                TimeSpan secondsUntilTimedOut = TimeSpan.FromSeconds(10);
+                TimeSpan secondsUntilTimedOut = TimeSpan.FromSeconds(15);
 
+                // Waits for the user reaction and stores it.
                 var reactionResult = await interactivity.WaitForReactionAsync(x =>
                     x.Message == message
                     && x.User == context.User
@@ -290,7 +309,9 @@ namespace PomodoroBot.Commands
                     // Sets an active Pomodoro session.
                     await context.Channel.SendMessageAsync("**Timer confirmed.**").ConfigureAwait(false);
 
-                    // User might want to stop the timer midway anytime, hence the many
+
+                    // --POMODORO TIMER--
+                    // User has the ability to stop the timer anytime, hence the many
                     // checkpoints that check if the timer is still active. 
                     while (AlarmData.AlarmOn)
                     {
@@ -300,7 +321,8 @@ namespace PomodoroBot.Commands
                             await context.Channel.SendMessageAsync(
                                 $"Pomodoro **{i}** has started.").ConfigureAwait(false);
 
-                            await Timer(context, duration, vstate.Channel);
+                            await Timer(context, duration, vstate.Channel, 
+                                AlarmData.WorkIntervalAlarmSoundFilePathMP3);
 
                             if (!AlarmData.AlarmOn) { return; }
                             // Announces and sets a short break when work time is finished
@@ -309,7 +331,8 @@ namespace PomodoroBot.Commands
                             await context.Channel.SendMessageAsync(
                                 $"Short Break: Take a break for **{shortBreakString}**.").ConfigureAwait(false);
 
-                            await Timer(context, AlarmData.AlarmShortBreak, vstate.Channel);
+                            await Timer(context, AlarmData.AlarmShortBreak, vstate.Channel, 
+                                AlarmData.ShortBreakAlarmSoundFilePathMP3);
                         }
 
                         if (!AlarmData.AlarmOn) { return; }
@@ -320,14 +343,17 @@ namespace PomodoroBot.Commands
                         await context.Channel.SendMessageAsync(
                                 $"Long Break: Take a break for **{longBreakString}**.").ConfigureAwait(false);
 
-                        await Timer(context, AlarmData.AlarmLongBreak, vstate.Channel);
+                        await Timer(context, AlarmData.AlarmLongBreak, vstate.Channel, 
+                            AlarmData.LongBreakAlarmSoundFilePathMP3);
                     }
                 }
-
+                // If the user selects the red X Emoji, the timer is cancelled.
                 else if (reactionResult.Result.Emoji == redXMarkEmoji)
                 {
                     await context.Channel.SendMessageAsync("**Timer cancelled.**").ConfigureAwait(false);
 
+                    // Sets the secondsUntilTimedOut to 1 second, otherwise it will not 
+                    // reset the user choice the next time the user calls the command. 
                     TimeSpan timeoutSeconds = TimeSpan.FromSeconds(1);
                     secondsUntilTimedOut = timeoutSeconds;
                     return;
@@ -338,9 +364,9 @@ namespace PomodoroBot.Commands
         }
 
         [Command("timerset")]
-        [Description("UPDATEME DESCRIPTION FOR TIMER.\n" +
+        [Description("Sets a timer for a specified duration in the channel & plays a sound when time is up.\n" +
             "Example: timerset 1h15m30s ChannelName")]
-        public async Task Timer(CommandContext context, TimeSpan duration, DiscordChannel channel)
+        public async Task Timer(CommandContext context, TimeSpan duration, DiscordChannel channel, string AlarmFilePath)
         {
             if (AlarmData.AlarmOn)
             {
@@ -371,7 +397,7 @@ namespace PomodoroBot.Commands
                     && AlarmData.AlarmOn)
                 {
                     await context.Channel.SendMessageAsync($"@everyone Time has been reached!");
-                    await Play(context, AlarmData.AlarmFilePathMP3);
+                    await Play(context, AlarmFilePath);
                 }
             }            
         }
@@ -412,8 +438,6 @@ namespace PomodoroBot.Commands
 
             // play
             Exception exc = null;
-            //await ctx.Message.RespondAsync($"Playing `{filename}`");
-
             try
             {
                 await vnc.SendSpeakingAsync(true);
@@ -445,11 +469,11 @@ namespace PomodoroBot.Commands
         }
 
         [Command("stoptimer")]
-        [Description("Leaves the voice channel.\n" +
+        [Description("Leaves the voice channel and stops the timer.\n" +
             "Example: stoptimer")]
         public async Task StopTimer(CommandContext ctx)
         {
-            //turns the alarm off.
+            //turns the alarm status as off.
             AlarmData.AlarmOn = false;
 
             // check whether VNext is enabled
@@ -474,11 +498,8 @@ namespace PomodoroBot.Commands
             vnc.Disconnect();
             await ctx.Channel.SendMessageAsync("Timer has been stopped.");
         }
-
-
-        [Command("join")]
-        [Description("Joins a voice channel.\n" +
-            "Example: join")]
+        
+        // Joins a voice channel -- meant to be a helper for pomodoro timer command.
         public async Task Join(CommandContext ctx, DiscordChannel chn)
         {
             // check whether VNext is enabled
@@ -512,38 +533,11 @@ namespace PomodoroBot.Commands
                 chn = vstat.Channel;
 
             // connect
-            vnc = await vnext.ConnectAsync(chn);
-            //await ctx.Channel.SendMessageAsync($"Connected to `{chn.Name}`");           
+            vnc = await vnext.ConnectAsync(chn);       
         }
 
-        [Command("leave")]
-        [Description("Leaves a voice channel.\n" +
-            "Example: leave")]
-        public async Task Leave(CommandContext ctx)
-        {
-            // check whether VNext is enabled
-            var vnext = ctx.Client.GetVoiceNext();
-            if (vnext == null)
-            {
-                // not enabled
-                await ctx.Channel.SendMessageAsync("VNext is not enabled or configured.");
-                return;
-            }
-
-            // check whether we are connected
-            var vnc = vnext.GetConnection(ctx.Guild);
-            if (vnc == null)
-            {
-                // not connected
-                await ctx.Channel.SendMessageAsync("Not connected to this channel.");
-                return;
-            }
-
-            // disconnect
-            vnc.Disconnect();
-            //await ctx.Channel.SendMessageAsync("Disconnected");
-        }
-
+        // Gets a TimeSpan value of hh/mm/ss and returns a string "hh hour(s) and mm minute(s)"
+        // e.g. 01:30:00 returns "1 hour and 30 minutes"
         public string TimeToStringFormatted(TimeSpan time)
         {
             string timeFormattedHoursMinutes = time.ToString(@"hh\:mm");
@@ -551,6 +545,7 @@ namespace PomodoroBot.Commands
             string minutes = "";
             
 
+            // HOURS
             if (timeFormattedHoursMinutes[0] != '0')
             {
                 hours =
@@ -558,11 +553,11 @@ namespace PomodoroBot.Commands
             }
 
             // If the first digit (hours) of the time is 0, but the second digit (hours) is not zero, 
-            // hoursFromLongBreal something like "5 hours".
+            // it gets the hour digit at index 1.
             if (timeFormattedHoursMinutes[0] == '0' &&
                 timeFormattedHoursMinutes[1] != '0')
             {
-                // for the case of only 1 hour, hours-> hour . 
+                // for the case of only 1 hour, "hours" becomes "hour". 
                 if (timeFormattedHoursMinutes[1] == '1')
                 {
                     hours =
@@ -573,7 +568,7 @@ namespace PomodoroBot.Commands
                         timeFormattedHoursMinutes[1] + " hours";
             }
 
-            //MINUTES from format 20:22 with 20 hours and 22 minutes
+            // MINUTES
             if (timeFormattedHoursMinutes[3] != '0')
             {
                 minutes =
@@ -594,24 +589,24 @@ namespace PomodoroBot.Commands
             }
 
             // adds to the string depending on if there are hours and/or minutes
-            string concatenatedTimeString = "";
+            string TimeString = "";
             bool hoursAreGiven = (hours != "");
             bool minutesAreGiven = (minutes != "");
 
             if (hoursAreGiven && minutesAreGiven)
             {
-                concatenatedTimeString = hours + " and " + minutes;
+                TimeString = hours + " and " + minutes;
             }
             else if ((!hoursAreGiven) && minutesAreGiven)
             {
-                concatenatedTimeString = minutes;
+                TimeString = minutes;
             }
             else if (hoursAreGiven && (!minutesAreGiven))
             {
-                concatenatedTimeString = hours;
+                TimeString = hours;
             }
 
-            return concatenatedTimeString;
+            return TimeString;
         }
     }
 
