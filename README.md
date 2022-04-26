@@ -12,4 +12,4 @@ This is Discord Bot made with C# and DSharpPlus for time management with the Pom
 
 ## Demo Images
 <img width="472" alt="pomodoroimg1" src="https://user-images.githubusercontent.com/62355475/165233305-14409914-01be-4680-b486-12cfb8464487.png">
-<img width="788" alt="pomodemoimg2" src="https://user-images.githubusercontent.com/62355475/164593616-a73fb0a6-d704-4c0a-92d6-60faeedae6e3.png">
+<img width="564" alt="pomoimg1" src="https://user-images.githubusercontent.com/62355475/165233640-c3d8fb1d-fd13-4be5-b7e5-c30a434bf3c1.png">
