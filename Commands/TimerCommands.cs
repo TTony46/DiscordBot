@@ -107,7 +107,7 @@ namespace PomodoroBot.Commands
                 if (isValid)
                 {
                     await context.Channel.SendMessageAsync(
-                        $"How many minutes did you want to set the {intervalType} as? i.e : 45").ConfigureAwait(false); ;
+                        $"How many minutes did you want to set the {intervalType} as? e.g. 45").ConfigureAwait(false); ;
                     var response = await interactivity.WaitForMessageAsync(x =>
                         x.Channel == context.Channel).ConfigureAwait(false);
 
