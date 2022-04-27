@@ -23,10 +23,10 @@ namespace PomodoroBot.Commands
         public static TimeSpan AlarmDuration = TimeSpan.FromMinutes(1);
         public static TimeSpan AlarmShortBreak = TimeSpan.FromMinutes(1);
         public static TimeSpan AlarmLongBreak = TimeSpan.FromMinutes(1);        
-        public static string AlarmFilePathFFMPEG = @"C:\Users\Tony\Desktop\PomodoroBot\ffmpeg\bin\ffmpeg.exe";
-        public static string WorkIntervalAlarmSoundFilePathMP3 = @"C:\Users\Tony\Desktop\PomodoroBot\AlarmSound.mp3";
-        public static string ShortBreakAlarmSoundFilePathMP3 = @"C:\Users\Tony\Desktop\PomodoroBot\AlarmSound.mp3";
-        public static string LongBreakAlarmSoundFilePathMP3 = @"C:\Users\Tony\Desktop\PomodoroBot\AlarmSound.mp3";
+        public static string AlarmFilePathFFMPEG = @"FilePathToFFMPEG";
+        public static string WorkIntervalAlarmSoundFilePathMP3 = @"FilePathToAlarmSound";
+        public static string ShortBreakAlarmSoundFilePathMP3 = @"FilePathToAlarmSound";
+        public static string LongBreakAlarmSoundFilePathMP3 = @"FilePathToAlarmSound";
         public static bool AlarmOn = true;
     }
     public class TimerCommands : BaseCommandModule
