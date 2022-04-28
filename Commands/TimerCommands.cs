@@ -20,9 +20,9 @@ namespace PomodoroBot.Commands
     public class AlarmData
     {
         public DateTime AlarmTime;
-        public static TimeSpan AlarmDuration = TimeSpan.FromMinutes(1);
-        public static TimeSpan AlarmShortBreak = TimeSpan.FromMinutes(1);
-        public static TimeSpan AlarmLongBreak = TimeSpan.FromMinutes(1);        
+        public static TimeSpan AlarmDuration = TimeSpan.FromMinutes(25);
+        public static TimeSpan AlarmShortBreak = TimeSpan.FromMinutes(5);
+        public static TimeSpan AlarmLongBreak = TimeSpan.FromMinutes(30);
         public static string AlarmFilePathFFMPEG = @"FilePathToFFMPEG";
         public static string WorkIntervalAlarmSoundFilePathMP3 = @"FilePathToAlarmSound";
         public static string ShortBreakAlarmSoundFilePathMP3 = @"FilePathToAlarmSound";
@@ -106,7 +106,7 @@ namespace PomodoroBot.Commands
                 // and collects that number as the TimeSpan minutes stored in newUserTime.
                 if (isValid)
                 {
-                    await context.Channel.SendMessageAsync(
+                    var userNewTime = await context.Channel.SendMessageAsync(
                         $"How many minutes did you want to set the {intervalType} as? e.g. 45").ConfigureAwait(false); ;
                     var response = await interactivity.WaitForMessageAsync(x =>
                         x.Channel == context.Channel).ConfigureAwait(false);
@@ -363,9 +363,7 @@ namespace PomodoroBot.Commands
             }            
         }
 
-        [Command("timerset")]
-        [Description("Sets a timer for a specified duration in the channel & plays a sound when time is up.\n" +
-            "Example: timerset 1h15m30s ChannelName")]
+        // Helper Command for Pomodoro
         public async Task Timer(CommandContext context, TimeSpan duration, DiscordChannel channel, string AlarmFilePath)
         {
             if (AlarmData.AlarmOn)
