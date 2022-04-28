@@ -20,11 +20,12 @@ namespace DiscordBot
         static void Main(string[] args)
         {
             MainAsync().GetAwaiter().GetResult();
-        }
+        }    
 
         public static readonly EventId BotEventId = new EventId(42, "PomodoroBot");
         public InteractivityExtension Interactivity { get; private set; }
         public VoiceNextExtension Voice { get; set; }
+     
         public static async Task MainAsync()
         {
             // Discord Client
@@ -35,6 +36,7 @@ namespace DiscordBot
                 Intents = DiscordIntents.AllUnprivileged
             });
 
+           
             var interactivity = discord.UseInteractivity(new InteractivityConfiguration()
             {
                 Timeout = TimeSpan.FromMinutes(2)
@@ -56,6 +58,7 @@ namespace DiscordBot
             var voice = discord.UseVoiceNext(new VoiceNextConfiguration());
 
             await discord.ConnectAsync(new DiscordActivity(";help to get started"));
+            await KeepHeartbeatAlive();
             await Task.Delay(-1);
         }
 
@@ -84,7 +87,18 @@ namespace DiscordBot
             }
         }
 
-
-        // https://dsharpplus.github.io/articles/commands/intro.html
+        public static async Task KeepHeartbeatAlive()
+        {
+            int counter = 0;
+            while (true)
+            {
+                counter++;
+                await Task.Delay(1000);
+                if (counter % 25 == 0)
+                {
+                    Console.WriteLine("Heartbeat");
+                }
+            }
+        }
     }
 }
