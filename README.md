@@ -1,7 +1,7 @@
 # PomodoroBot
 This is Discord Bot made with C# and DSharpPlus for time management with the Pomodoro Technique, mainly to be used in study servers.
 
-## Running the Bot
+## Running the Bot Yourself
 - Create a Discord Developer Profile and a create a new Application
 - Generate an OAuth2 URL and use it to invite the bot to the desired server
 - Clone this repository
