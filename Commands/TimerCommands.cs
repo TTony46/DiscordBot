@@ -399,9 +399,6 @@ namespace PomodoroBot.Commands
                 }
             }            
         }
-
-        [Command("play")]
-        [Description("Plays an audio file.")]
         public async Task Play(CommandContext ctx, [RemainingText, Description("Full path to the file to play.")] string filename)
         {
             // check whether VNext is enabled

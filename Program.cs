@@ -30,7 +30,7 @@ namespace DiscordBot
             // Discord Client
             var discord = new DiscordClient(new DiscordConfiguration()
             {
-                Token = "TOKEN",
+                Token = "YOUR_TOKEN_HERE",
                 TokenType = TokenType.Bot,
                 Intents = DiscordIntents.AllUnprivileged
             });
@@ -46,7 +46,7 @@ namespace DiscordBot
                 StringPrefixes = new[] { ";" },
                 EnableDms = false,
                 EnableMentionPrefix = true,
-                DmHelp = true,
+                DmHelp = false,
             });
 
             commands.RegisterCommands<Module>();
@@ -55,7 +55,7 @@ namespace DiscordBot
 
             var voice = discord.UseVoiceNext(new VoiceNextConfiguration());
 
-            await discord.ConnectAsync();
+            await discord.ConnectAsync(new DiscordActivity(";help to get started"));
             await Task.Delay(-1);
         }
 
