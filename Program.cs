@@ -20,12 +20,11 @@ namespace DiscordBot
         static void Main(string[] args)
         {
             MainAsync().GetAwaiter().GetResult();
-        }    
+        }       
 
         public static readonly EventId BotEventId = new EventId(42, "PomodoroBot");
         public InteractivityExtension Interactivity { get; private set; }
-        public VoiceNextExtension Voice { get; set; }
-     
+        public VoiceNextExtension Voice { get; set; }   
         public static async Task MainAsync()
         {
             // Discord Client
@@ -35,11 +34,10 @@ namespace DiscordBot
                 TokenType = TokenType.Bot,
                 Intents = DiscordIntents.AllUnprivileged
             });
-
            
             var interactivity = discord.UseInteractivity(new InteractivityConfiguration()
             {
-                Timeout = TimeSpan.FromMinutes(2)
+                Timeout = TimeSpan.FromMinutes(1)
             });
 
             // Set command prefix as ";" and register commands from Module.cs in Commands Folder.
@@ -94,7 +92,7 @@ namespace DiscordBot
             {
                 counter++;
                 await Task.Delay(1000);
-                if (counter % 25 == 0)
+                if (counter % 10 == 0)
                 {
                     Console.WriteLine("Heartbeat");
                 }
