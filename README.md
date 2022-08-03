@@ -1,7 +1,9 @@
 # PomodoroBot
 This is Discord Bot made with C# and DSharpPlus for time management with the Pomodoro Technique, mainly to be used in study servers.
 ## How to add the bot to your server
-You can add the Discord Bot using this [link](https://discord.com/api/oauth2/authorize?client_id=957499467907600394&permissions=49310784&scope=bot)
+~~You can add the Discord Bot using this [link](https://discord.com/api/oauth2/authorize?client_id=957499467907600394&permissions=49310784&scope=bot)~~
+
+Update: The link no longer works because my Azure account is back to the free tier and cannot host it continously. Feel free to follow the steps below to run/host the bot yourself
 ## Running the bot yourself
 - Create a Discord Developer Profile and a create a new Application
 - Generate an OAuth2 URL and use it to invite the bot to the desired server
@@ -9,7 +11,7 @@ You can add the Discord Bot using this [link](https://discord.com/api/oauth2/aut
 - Generate the Discord Bot Token and set it as the Token string inside Program.cs
 - Set up FFMPEG
 - Set the file paths for the AlarmSounds and FFMPEG inside Commands/TimerCommands.cs
-- Run the program/bot
+- Run or host the program/bot
 
 ## Demo Images
 <img width="472" alt="pomodoroimg1" src="https://user-images.githubusercontent.com/62355475/165233305-14409914-01be-4680-b486-12cfb8464487.png">
